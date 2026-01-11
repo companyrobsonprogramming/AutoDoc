@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+		<PropertyGroup>
+				<TargetFramework>net9.0</TargetFramework>
+				<Nullable>enable</Nullable>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<UserSecretsId>bdf6d09c-5abf-4a40-9ce7-bedf0716fcf5</UserSecretsId>
+				<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+				<DockerfileContext>..\..</DockerfileContext>
+		</PropertyGroup>
+
+		<ItemGroup>
+				<ProjectReference Include="..\AutoDoc.Application\AutoDoc.Application.csproj" />
+				<ProjectReference Include="..\AutoDoc.Domain\AutoDoc.Domain.csproj" />
+				<ProjectReference Include="..\AutoDoc.Infrastructure\AutoDoc.Infrastructure.csproj" />
+		</ItemGroup>
+
+		<ItemGroup>
+				<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+				  <PrivateAssets>all</PrivateAssets>
+				  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+				</PackageReference>
+				<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+				<PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
+		</ItemGroup>
+</Project>
