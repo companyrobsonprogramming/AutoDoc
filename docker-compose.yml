@@ -1,0 +1,74 @@
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: autodoc-postgres
+    environment:
+      POSTGRES_DB: autodoc
+      POSTGRES_USER: autodoc
+      POSTGRES_PASSWORD: autodoc
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autodoc -d autodoc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - autodoc-network
+    restart: unless-stopped
+
+  # Backend API (.NET)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: autodoc-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=autodoc;Username=autodoc;Password=autodoc
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - autodoc-network
+    volumes:
+      - ./backend/src/AutoDoc.Api/appsettings.json:/app/appsettings.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/prompts || curl -f http://localhost:8080/swagger/index.html || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:5000/api
+        - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY:-}
+    container_name: autodoc-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - autodoc-network
+    restart: unless-stopped
+
+networks:
+  autodoc-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

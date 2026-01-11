@@ -1,0 +1,30 @@
+# Arquivo de exemplo para override do docker-compose.yml
+# Copie este arquivo para docker-compose.override.yml e ajuste conforme necessário
+# O docker-compose automaticamente usa este arquivo se existir
+
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      # Ajuste a connection string se necessário
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=autodoc;Username=autodoc;Password=autodoc
+      # Descomente para habilitar HTTPS
+      # - ASPNETCORE_URLS=https://+:8081;http://+:8080
+      # - ASPNETCORE_Kestrel__Certificates__Default__Password=senha-do-certificado
+      # - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certificado.pfx
+
+  frontend:
+    build:
+      args:
+        # Ajuste a URL da API se necessário
+        - VITE_API_BASE_URL=http://localhost:5000/api
+        # A chave do Gemini será lida do arquivo .env
+        - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY}
+
+  postgres:
+    environment:
+      # Altere as credenciais do banco de dados para produção
+      # POSTGRES_PASSWORD=senha-segura-aqui
+      # POSTGRES_USER=autodoc
+      # POSTGRES_DB=autodoc
