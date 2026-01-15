@@ -53,15 +53,16 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 104857600; // 100 MB
 });
 
-// CORS para permitir o front (Vite)
+// CORS para permitir o front (Vite) - política nomeada e suporte a credenciais
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("Frontend", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:5173", "http://localhost:3005") // ajuste conforme seu front
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -71,7 +72,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseCors();
+app.UseCors("Frontend");
 
 app.UseHttpsRedirection();
 

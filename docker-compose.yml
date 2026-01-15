@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     container_name: autodoc-backend
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=autodoc;Username=autodoc;Password=autodoc
     ports:
@@ -58,7 +58,7 @@ services:
         - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY:-}
     container_name: autodoc-frontend
     ports:
-      - "5173:80"
+      - "3005:80"
     depends_on:
       backend:
         condition: service_healthy

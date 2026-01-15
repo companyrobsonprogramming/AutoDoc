@@ -1,17 +1,17 @@
 import axios, { AxiosError } from 'axios';
 import {
-    CreateAiResultRequest,
-    CreatePackageRequest,
-    CreateSessionRequest,
-    FinalDocumentation,
-    GeminiApiKey,
-    IgnoreRule,
-    ProcessingSession,
-    Prompt
+  CreateAiResultRequest,
+  CreatePackageRequest,
+  CreateSessionRequest,
+  FinalDocumentation,
+  GeminiApiKey,
+  IgnoreRule,
+  ProcessingSession,
+  Prompt
 } from '../types/domain';
 
 const api = axios.create({
-  baseURL: 'https://localhost:5000/api',
+  baseURL: 'http://localhost:5000/api',
   timeout: 300000 // 5 minutos para requisições grandes (refinamento de documentação, etc)
 });
 
