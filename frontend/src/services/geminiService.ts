@@ -1,8 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
-import { LocalFileInfo } from '../types/domain';
-import { DEFAULT_MODEL } from '../constants/geminiModels';
-import { rateLimiter } from './rateLimiter';
-
+import { GoogleGenAI } from "@google/genai";
+import { DEFAULT_MODEL } from "../constants/geminiModels";
+import { LocalFileInfo } from "../types/domain";
 export interface GeminiPackageResult {
   text: string;
   rawJson?: string;
@@ -17,36 +15,41 @@ const retryWithBackoff = async <T>(
   baseDelay: number = 1000
 ): Promise<T> => {
   let lastError: Error | unknown;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
     } catch (err) {
       lastError = err;
-      
+
       // Não retry para erros que não devem ser tentados novamente
       if (err instanceof Error) {
         if (
-          err.message.includes('API_KEY_INVALID') ||
-          err.message.includes('API key') ||
-          err.message.includes('QUOTA_EXCEEDED') ||
-          err.message.includes('quota') ||
-          err.message.includes('SAFETY') ||
-          err.message.includes('safety')
+          err.message.includes("API_KEY_INVALID") ||
+          err.message.includes("API key") ||
+          err.message.includes("QUOTA_EXCEEDED") ||
+          err.message.includes("quota") ||
+          err.message.includes("SAFETY") ||
+          err.message.includes("safety")
         ) {
           throw err;
         }
       }
-      
+
       // Se não for a última tentativa, aguarda antes de tentar novamente
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt); // Backoff exponencial: 1s, 2s, 4s
-        console.warn(`Tentativa ${attempt + 1} falhou. Tentando novamente em ${delay}ms...`, err);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.warn(
+          `Tentativa ${
+            attempt + 1
+          } falhou. Tentando novamente em ${delay}ms...`,
+          err
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  
+
   // Se todas as tentativas falharam, lança o último erro
   throw lastError;
 };
@@ -58,37 +61,38 @@ export const callGeminiForPackage = async (
   temperature?: number,
   modelName?: string
 ): Promise<GeminiPackageResult> => {
-  console.log('callGeminiForPackage', apiKey);
+  console.log("callGeminiForPackage", apiKey);
   if (!apiKey) {
-    throw new Error('Gemini não configurado (API key ausente). Cadastre a chave no backend.');
+    throw new Error(
+      "Gemini não configurado (API key ausente). Cadastre a chave no backend."
+    );
   }
 
   if (!files || files.length === 0) {
-    throw new Error('Nenhum arquivo fornecido para processamento.');
+    throw new Error("Nenhum arquivo fornecido para processamento.");
   }
 
   // Validação da temperatura: deve estar entre 0.00 e 2.00
   if (temperature !== undefined) {
-    if (temperature < 0.00 || temperature > 2.00) {
-      throw new Error('Temperatura deve estar entre 0.00 e 2.00');
+    if (temperature < 0.0 || temperature > 2.0) {
+      throw new Error("Temperatura deve estar entre 0.00 e 2.00");
     }
   }
 
   return retryWithBackoff(async () => {
     try {
       const model = modelName || DEFAULT_MODEL;
-      
+
       // Estimate token count (rough approximation: 1 token ≈ 4 characters)
-      const promptText = prompt + files.map(f => f.content || '').join('\n');
+      const promptText = prompt + files.map((f) => f.content || "").join("\n");
       const estimatedTokens = Math.ceil(promptText.length / 4);
 
-      // Wait for rate limit if necessary
-      await rateLimiter.waitForRateLimit(model, estimatedTokens);
-
-      const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
+      const ai = new GoogleGenAI({ apiKey, apiVersion: "v1" });
       const filesDescription = files
-        .map((f) => `### Arquivo: ${f.path}\n\n\`\`\`\n${f.content ?? ''}\n\`\`\``)
-        .join('\n\n');
+        .map(
+          (f) => `### Arquivo: ${f.path}\n\n\`\`\`\n${f.content ?? ""}\n\`\`\``
+        )
+        .join("\n\n");
 
       const fullPrompt = `
 Você é um assistente especializado em gerar documentação técnica de sistemas.
@@ -120,42 +124,55 @@ ${filesDescription}
         model: model,
         contents: [
           {
-            role: 'user',
-            parts: [{ text: fullPrompt }]
-          }
+            role: "user",
+            parts: [{ text: fullPrompt }],
+          },
         ],
-        config: Object.keys(config).length > 0 ? config : undefined
+        config: Object.keys(config).length > 0 ? config : undefined,
       });
 
       const text = response.text;
       if (!text || text.trim().length === 0) {
-        throw new Error('A resposta do Gemini está vazia.');
+        throw new Error("A resposta do Gemini está vazia.");
       }
 
       // Estimate response tokens and record the request
       const responseTokens = Math.ceil(text.length / 4);
       const totalTokens = estimatedTokens + responseTokens;
-      rateLimiter.recordRequest(model, totalTokens);
 
       return {
         text,
-        rawJson: JSON.stringify(response, null, 2)
+        rawJson: JSON.stringify(response, null, 2),
       };
     } catch (err) {
       if (err instanceof Error) {
         // Melhorar mensagens de erro específicas do Gemini
-        if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key')) {
-          throw new Error('Chave da API do Gemini inválida. Verifique se a chave está correta no arquivo .env');
+        if (
+          err.message.includes("API_KEY_INVALID") ||
+          err.message.includes("API key")
+        ) {
+          throw new Error(
+            "Chave da API do Gemini inválida. Verifique se a chave está correta no arquivo .env"
+          );
         }
-        if (err.message.includes('QUOTA_EXCEEDED') || err.message.includes('quota')) {
-          throw new Error('Cota da API do Gemini excedida. Verifique seu limite no Google AI Studio');
+        if (
+          err.message.includes("QUOTA_EXCEEDED") ||
+          err.message.includes("quota")
+        ) {
+          throw new Error(
+            "Cota da API do Gemini excedida. Verifique seu limite no Google AI Studio"
+          );
         }
-        if (err.message.includes('SAFETY') || err.message.includes('safety')) {
-          throw new Error('Conteúdo bloqueado pelos filtros de segurança do Gemini. Tente ajustar o prompt ou os arquivos.');
+        if (err.message.includes("SAFETY") || err.message.includes("safety")) {
+          throw new Error(
+            "Conteúdo bloqueado pelos filtros de segurança do Gemini. Tente ajustar o prompt ou os arquivos."
+          );
         }
         throw err;
       }
-      throw new Error('Erro desconhecido ao chamar a API do Gemini: ' + String(err));
+      throw new Error(
+        "Erro desconhecido ao chamar a API do Gemini: " + String(err)
+      );
     }
   });
 };
@@ -170,38 +187,36 @@ export const refineDocumentationWithPrompt = async (
   temperature?: number,
   modelName?: string
 ): Promise<GeminiPackageResult> => {
-
   if (!apiKey) {
-    throw new Error('Gemini não configurado (API key ausente). Cadastre a chave no backend.');
+    throw new Error(
+      "Gemini não configurado (API key ausente). Cadastre a chave no backend."
+    );
   }
 
   if (!currentDocumentation || currentDocumentation.trim().length === 0) {
-    throw new Error('Documentação atual não fornecida.');
+    throw new Error("Documentação atual não fornecida.");
   }
 
   if (!additionalPrompt || additionalPrompt.trim().length === 0) {
-    throw new Error('Prompt adicional não fornecido.');
+    throw new Error("Prompt adicional não fornecido.");
   }
 
   // Validação da temperatura: deve estar entre 0.00 e 2.00
   if (temperature !== undefined) {
-    if (temperature < 0.00 || temperature > 2.00) {
-      throw new Error('Temperatura deve estar entre 0.00 e 2.00');
+    if (temperature < 0.0 || temperature > 2.0) {
+      throw new Error("Temperatura deve estar entre 0.00 e 2.00");
     }
   }
 
   return retryWithBackoff(async () => {
     try {
       const model = modelName || DEFAULT_MODEL;
-      
+
       // Estimate token count (rough approximation: 1 token ≈ 4 characters)
       const promptText = currentDocumentation + additionalPrompt;
       const estimatedTokens = Math.ceil(promptText.length / 4);
 
-      // Wait for rate limit if necessary
-      await rateLimiter.waitForRateLimit(model, estimatedTokens);
-
-      const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
+      const ai = new GoogleGenAI({ apiKey, apiVersion: "v1" });
 
       const fullPrompt = `
 Você é um assistente especializado em refinar e melhorar documentação técnica.
@@ -227,42 +242,55 @@ Retorne APENAS a documentação refinada em Markdown, sem explicações adiciona
         model: model,
         contents: [
           {
-            role: 'user',
-            parts: [{ text: fullPrompt }]
-          }
+            role: "user",
+            parts: [{ text: fullPrompt }],
+          },
         ],
-        config: Object.keys(config).length > 0 ? config : undefined
+        config: Object.keys(config).length > 0 ? config : undefined,
       });
 
       const text = response.text;
       if (!text || text.trim().length === 0) {
-        throw new Error('A resposta do Gemini está vazia.');
+        throw new Error("A resposta do Gemini está vazia.");
       }
 
       // Estimate response tokens and record the request
       const responseTokens = Math.ceil(text.length / 4);
       const totalTokens = estimatedTokens + responseTokens;
-      rateLimiter.recordRequest(model, totalTokens);
 
       return {
         text,
-        rawJson: JSON.stringify(response, null, 2)
+        rawJson: JSON.stringify(response, null, 2),
       };
     } catch (err) {
       if (err instanceof Error) {
         // Melhorar mensagens de erro específicas do Gemini
-        if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key')) {
-          throw new Error('Chave da API do Gemini inválida. Verifique se a chave está correta no arquivo .env');
+        if (
+          err.message.includes("API_KEY_INVALID") ||
+          err.message.includes("API key")
+        ) {
+          throw new Error(
+            "Chave da API do Gemini inválida. Verifique se a chave está correta no arquivo .env"
+          );
         }
-        if (err.message.includes('QUOTA_EXCEEDED') || err.message.includes('quota')) {
-          throw new Error('Cota da API do Gemini excedida. Verifique seu limite no Google AI Studio');
+        if (
+          err.message.includes("QUOTA_EXCEEDED") ||
+          err.message.includes("quota")
+        ) {
+          throw new Error(
+            "Cota da API do Gemini excedida. Verifique seu limite no Google AI Studio"
+          );
         }
-        if (err.message.includes('SAFETY') || err.message.includes('safety')) {
-          throw new Error('Conteúdo bloqueado pelos filtros de segurança do Gemini. Tente ajustar o prompt ou os arquivos.');
+        if (err.message.includes("SAFETY") || err.message.includes("safety")) {
+          throw new Error(
+            "Conteúdo bloqueado pelos filtros de segurança do Gemini. Tente ajustar o prompt ou os arquivos."
+          );
         }
         throw err;
       }
-      throw new Error('Erro desconhecido ao chamar a API do Gemini: ' + String(err));
+      throw new Error(
+        "Erro desconhecido ao chamar a API do Gemini: " + String(err)
+      );
     }
   });
 };

@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProcessingStore } from '../../store/useProcessingStore';
+import { PackageInput } from '../../types/domain';
+import { PackageFilesDialog } from './PackageFilesDialog';
 
 export const ProcessingStatus: React.FC = () => {
   const { packages, currentPackageIndex, isProcessing, error } = useProcessingStore();
+  const [selectedPackage, setSelectedPackage] = useState<PackageInput | null>(null);
 
   const completed = packages.filter((p) => p.status === 'completed').length;
   const total = packages.length || 1;
@@ -80,6 +83,7 @@ export const ProcessingStatus: React.FC = () => {
           {packages.map((p, idx) => (
             <div
               key={p.id}
+              onClick={() => setSelectedPackage(p)}
               style={{
                 fontSize: '0.8rem',
                 padding: '0.4rem 0.25rem',
@@ -88,7 +92,22 @@ export const ProcessingStatus: React.FC = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 backgroundColor:
-                  currentPackageIndex === idx ? 'rgba(37,99,235,0.1)' : 'transparent'
+                  currentPackageIndex === idx ? 'rgba(37,99,235,0.1)' : 'transparent',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                '&:hover': {
+                  backgroundColor: 'rgba(37,99,235,0.15)'
+                }
+              }}
+              onMouseEnter={(e) => {
+                if (currentPackageIndex !== idx) {
+                  e.currentTarget.style.backgroundColor = 'rgba(55,65,81,0.2)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentPackageIndex !== idx) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
               }}
             >
               <div>
@@ -173,6 +192,14 @@ export const ProcessingStatus: React.FC = () => {
           })()}
         </div>
       </section>
+
+      {selectedPackage && (
+        <PackageFilesDialog
+          package={selectedPackage}
+          isOpen={selectedPackage !== null}
+          onClose={() => setSelectedPackage(null)}
+        />
+      )}
     </div>
   );
 };

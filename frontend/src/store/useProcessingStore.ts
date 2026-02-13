@@ -39,6 +39,7 @@ interface ProcessingState {
   setTemperature: (value: number | undefined) => void;
   setSelectedModel: (model: string | undefined) => void;
   setShouldStopProcessing: (value: boolean) => void;
+  deleteFileFromPackage: (packageId: string, fileId: string) => void;
   resetFailedPackages: () => void;
   resetAllPackages: () => void;
   reset: () => void;
@@ -85,6 +86,19 @@ export const useProcessingStore = create<ProcessingState>()(
     setTemperature: (value) => set({ temperature: value }),
     setSelectedModel: (model) => set({ selectedModel: model }),
     setShouldStopProcessing: (value) => set({ shouldStopProcessing: value }),
+
+    deleteFileFromPackage: (packageId, fileId) =>
+      set((state) => ({
+        packages: state.packages.map((p) =>
+          p.id === packageId
+            ? {
+                ...p,
+                files: p.files.filter((f) => f.id !== fileId),
+                totalSizeBytes: p.totalSizeBytes - (p.files.find((f) => f.id === fileId)?.size ?? 0)
+              }
+            : p
+        )
+      })),
 
     resetFailedPackages: () =>
       set((state) => ({
